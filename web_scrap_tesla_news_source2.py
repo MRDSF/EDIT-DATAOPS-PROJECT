@@ -71,17 +71,35 @@ def scraper():
     return rows
 
 def save_to_csv(news):
-    path = Path("data/tesla_news/euronews.csv")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
+    base_path = Path("data/tesla_news")
+    base_path.mkdir(parents=True, exist_ok=True)
 
-        # cabeçalho
-        writer.writerow(["date", "title", "link", "source"])
+    open_files = {}   # (ano, mes) -> file handle
+    writers = {}      # (ano, mes) -> csv.writer
 
-        # dados
+    try:
         for date, title, link in news:
-            writer.writerow([date, title, link, "euronews"])
+            date = datetime.fromisoformat(date).date()
+            key = (date.year, date.month) # chave para identificar o arquivo (ano, mês)
+
+            if key not in open_files: # se o arquivo para esse mês ainda não foi aberto, abrir e criar o writer
+                filename = f"euronews_{key[0]}_{key[1]:02d}.csv" 
+                path = base_path / filename # caminho completo do arquivo
+                is_new = not path.exists()
+
+                f = open(path, "a", newline="", encoding="utf-8")
+                w = csv.writer(f) # criar o writer para esse arquivo
+                if is_new:
+                    w.writerow(["date", "title", "link", "source"]) # escrever o cabeçalho apenas se o arquivo é novo
+
+                open_files[key] = f # armazenar o file handle para fechar depois
+                writers[key] = w # armazenar o writer para escrever os dados
+
+            writers[key].writerow([date, title, link, "euronews"])  # escrever a linha de dados usando o writer correspondente ao ano e mês do artigo
+    finally:
+        # garantir que todos os arquivos sejam fechados mesmo se ocorrer um erro
+        for f in open_files.values():
+            f.close()
 
 if __name__ == "__main__":
     rows = scraper()
