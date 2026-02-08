@@ -52,8 +52,8 @@ def fetch_data():
 
 
 def save_to_json(df):
-    os.makedirs("./data", exist_ok=True) # Create data directory if it doesn't exist
-    file_path = f"./data/stocks_data_{company}_{date.today()}.json" # File path with current date
+    os.makedirs("./data/stocks", exist_ok=True) # Create data directory if it doesn't exist
+    file_path = f"./data/stocks/stocks_data_{company}_{date.today()}.json" # File path with current date
     df.to_json(file_path, orient="records", date_format="iso") # Save DataFrame to JSON (orient="records" creates a list of records each line as a JSON object)
     print(f"Data saved to {file_path}")
 
