@@ -31,9 +31,8 @@ def fetch_data():
 
         # Simular um erro de validação para testar o tratamento de erros (descomente para testar)
         # first_key = next(iter(data["Monthly Adjusted Time Series"]))
-        # data["Monthly Adjusted Time Series"][first_key]["6. volume"] = "INVALID"
 
-        # valida aqui com pydantic, se não for válido, levanta um ValidationError
+        # Valida aqui com pydantic, se não for válido, levanta um ValidationError
         try:
             parsed = ApiResponse.model_validate(data) 
         except ValidationError as e:
@@ -49,7 +48,7 @@ def fetch_data():
         df = df.reset_index().rename(columns={"index": "date"}) # renomear a coluna do índice para "date" e resetar o índice para um índice numérico
 
         df["date"] = pd.to_datetime(df["date"]) # Converte a coluna de data para o formato datetime (estava como string) 2026-01-30 00:00:00
-        df = df.sort_values("date")
+        df = df.sort_values("date", ascending=False) # Ordena os dados por data em ordem crescente (do mais antigo para o mais recente)
 
         return df
     
