@@ -40,9 +40,9 @@ def fetch_data():
             "date", "open", "high", "low", "close", 
             "adjusted_close", "volume", "dividend_amount", 
         ]
-
-        df = df.sort_index() # Orderna pelo indice numerico (apenas para visualização)
+        
         df["date"] = pd.to_datetime(df["date"]) # Converte a coluna de data para o formato datetime (estava como string) 2026-01-30 00:00:00
+        df = df.sort_values("date")
 
         return df
     
