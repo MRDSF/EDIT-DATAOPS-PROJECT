@@ -5,6 +5,7 @@ import pandas as pd
 from datetime import date
 from models.schemas import ApiResponse
 from pydantic import ValidationError
+import json
 
 load_dotenv()
 symbol = "TSLA"
@@ -29,24 +30,23 @@ def fetch_data():
 
         data = response.json()
 
-        # Simular um erro de validação para testar o tratamento de erros (descomente para testar)
-        #first_key = next(iter(data["Monthly Adjusted Time Series"]))
-        #data["Monthly Adjusted Time Series"][first_key]["6. volume"] = "INVALID"
-        
+
+        if "Monthly Adjusted Time Series" not in data:
+            raise ValueError(f"Resposta inesperada da API: {data}") # Para clareza de erro, caso a chave esperada não esteja presente, levanta um ValueError com a resposta completa da API para ajudar no debug
 
         # Valida aqui com pydantic, se não for válido, levanta um ValidationError
         try:
-            parsed = ApiResponse.model_validate(data) 
+            parsed = ApiResponse.model_validate(data) # Fazes ApiResponse.model_validate(data) só para verificar que bate nos tipos / é “convertível”
         except ValidationError as e:
-            raise ValueError(f"API response inválida: {e}") from e
+            with open("debug_api_payload.json", "w") as f:
+                json.dump(data, f, indent=2)
 
+            raise ValueError(f"API response inválida: {e} \n Payload guardado em debug_api_payload.json") from e
+        
         #time_series = parsed.series  # <-- já validado com pydantic, agora é só pegar a série de dados
 
         time_series = data["Monthly Adjusted Time Series"]
-        
-        # Convertendo os objetos MonthlyBar para dicionários usando model_dump com os nomes das colunas certos
-        # Example: Open instead of 1. open, High instead of 2. high, etc.
-        #time_series = {k: v.model_dump(by_alias=False) for k, v in parsed.series.items()} 
+    
 
         df = pd.DataFrame.from_dict(time_series, orient='index') # index é a data e os valores são as colunas
         df = df.reset_index().rename(columns={"index": "date"}) # renomear a coluna do índice para "date" e resetar o índice para um índice numérico
@@ -63,7 +63,7 @@ def fetch_data():
 
 def save_to_json(df):
     os.makedirs("./data/stocks", exist_ok=True) # Create data directory if it doesn't exist
-    file_path = f"./data/stocks/stocks_data_{company}_{date.today()}.json" # File path with current date
+    file_path = f"./data/stocks/stocks_data_{company}.json" # File path with current date
     df.to_json(file_path, orient="records", date_format="iso") # Save DataFrame to JSON (orient="records" creates a list of records each line as a JSON object)
     print(f"Data saved to {file_path}")
 
