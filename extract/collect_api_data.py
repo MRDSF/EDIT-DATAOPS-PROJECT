@@ -51,6 +51,11 @@ def fetch_data():
         df = pd.DataFrame.from_dict(time_series, orient='index') # index é a data e os valores são as colunas
         df = df.reset_index().rename(columns={"index": "date"}) # renomear a coluna do índice para "date" e resetar o índice para um índice numérico
 
+        df.columns = [
+            "date", "open", "high", "low", "close", 
+            "adjusted_close", "volume", "dividend_amount", 
+        ]
+        
         df["date"] = pd.to_datetime(df["date"]) # Converte a coluna de data para o formato datetime (estava como string) 2026-01-30 00:00:00
         df = df.sort_values("date", ascending=False) # Ordena os dados por data em ordem crescente (do mais antigo para o mais recente)
 
