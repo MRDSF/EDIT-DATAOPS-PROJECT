@@ -30,41 +30,44 @@ def create_table(conn):
     conn.commit()
 
 
-def load_json_to_db(conn, json_path):
-    df = pd.read_json(json_path)
+def load_json_to_db(conn, json_path, chunk_size=100):
+    total_rows = 0
 
+    for chunk in pd.read_json(json_path, chunksize=chunk_size): # read the JSON file in chunks of 100 rows (adjust as needed based on the size of your data and memory constraints)
+        # ingestion timestamp
+        chunk["ingested_at"] = pd.Timestamp.now('UTC')
 
-    # ingestion timestamp
-    df["ingested_at"] = pd.Timestamp.now('UTC')
+        rows = list(chunk.itertuples(index=False, name=None))
 
-    rows = df.itertuples(index=False, name=None)
+        with conn.cursor() as cur:
+            execute_values(
+                cur,
+                f"""
+                INSERT INTO {TABLE_NAME}
+                (date, open, high, low, close,
+                adjusted_close, volume, dividend_amount, ingested_at)
+                VALUES %s
+                ON CONFLICT (date) DO UPDATE SET
+                    open = EXCLUDED.open,
+                    high = EXCLUDED.high,
+                    low = EXCLUDED.low,
+                    close = EXCLUDED.close,
+                    adjusted_close = EXCLUDED.adjusted_close,
+                    volume = EXCLUDED.volume,
+                    dividend_amount = EXCLUDED.dividend_amount,
+                    ingested_at = EXCLUDED.ingested_at
+                RETURNING 1
+                """,
+                rows,
+                page_size=5000 # set to 5000 for better performance, adjust as needed based on the size of your data and memory constraints
+            )
 
-    with conn.cursor() as cur:
-        execute_values(
-            cur,
-            f"""
-            INSERT INTO {TABLE_NAME}
-            (date, open, high, low, close,
-             adjusted_close, volume, dividend_amount, ingested_at)
-            VALUES %s
-            ON CONFLICT (date) DO UPDATE SET
-                open = EXCLUDED.open,
-                high = EXCLUDED.high,
-                low = EXCLUDED.low,
-                close = EXCLUDED.close,
-                adjusted_close = EXCLUDED.adjusted_close,
-                volume = EXCLUDED.volume,
-                dividend_amount = EXCLUDED.dividend_amount,
-                ingested_at = EXCLUDED.ingested_at
-            RETURNING 1
-            """,
-            rows,
-            page_size=5000 # set to 5000 for better performance, adjust as needed based on the size of your data and memory constraints
-        )
+            num_of_rows = len(cur.fetchall())
+        conn.commit()
+        total_rows += num_of_rows
+        print(f"Chunk processed: {num_of_rows} rows inserted/updated.")
 
-        num_of_rows = len(cur.fetchall())
-    conn.commit()
-    print(f"{num_of_rows} rows inserted/updated.")
+    print(f"Total: {total_rows} rows inserted/updated.")
 
 
 def main():
