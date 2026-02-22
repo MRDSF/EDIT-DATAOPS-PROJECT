@@ -42,8 +42,8 @@ def ensure_table(conn):
         """)
 
         cur.execute("""
-            CREATE UNIQUE INDEX IF NOT EXISTS raw_news_dedupe
-            ON raw_news (source, title, date_raw);
+            CREATE UNIQUE INDEX IF NOT EXISTS bronze_news_dedupe
+            ON bronze_news (source, title, date_raw);
         """)
 
     conn.commit()
@@ -86,7 +86,11 @@ def upload_all_csvs_to_raw(data_dir, conn):
                 with conn.cursor() as cur:
                     execute_values(
                         cur,
-                        f"INSERT INTO {TABLE_NAME} (date_raw, title, link, source, file_name) VALUES %s ON CONFLICT DO NOTHING",
+                        f"""
+                        INSERT INTO {TABLE_NAME} (date_raw, title, link, source, file_name)
+                        VALUES %s
+                        ON CONFLICT (source, title, date_raw) DO NOTHING
+                        """,
                         rows,
                         page_size=5000 # Controls the batch size for the insert operation (one insert per 5000 rows, adjust as needed)
                     )
