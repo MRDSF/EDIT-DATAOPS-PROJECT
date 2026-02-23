@@ -32,32 +32,32 @@ def fetch_data():
 
 
         if "Monthly Adjusted Time Series" not in data:
-            raise ValueError(f"Resposta inesperada da API: {data}") # Para clareza de erro, caso a chave esperada não esteja presente, levanta um ValueError com a resposta completa da API para ajudar no debug
+            raise ValueError(f"Unexpected API response: {data}") # If the expected key is not present, raise a ValueError with the full API response to help with debugging
 
-        # Valida aqui com pydantic, se não for válido, levanta um ValidationError
+        # Validate with Pydantic; if invalid, raises a ValidationError
         try:
-            parsed = ApiResponse.model_validate(data) # Fazes ApiResponse.model_validate(data) só para verificar que bate nos tipos / é “convertível”
+            parsed = ApiResponse.model_validate(data) # Validates that the data matches the expected types / is "convertible"
         except ValidationError as e:
             with open("debug_api_payload.json", "w") as f:
                 json.dump(data, f, indent=2)
 
-            raise ValueError(f"API response inválida: {e} \n Payload guardado em debug_api_payload.json") from e
+            raise ValueError(f"Invalid API response: {e} \n Payload saved to debug_api_payload.json") from e
         
-        #time_series = parsed.series  # <-- já validado com pydantic, agora é só pegar a série de dados
+        #time_series = parsed.series  # <-- already validated with Pydantic, now just grab the data series
 
         time_series = data["Monthly Adjusted Time Series"]
     
 
-        df = pd.DataFrame.from_dict(time_series, orient='index') # index é a data e os valores são as colunas
-        df = df.reset_index().rename(columns={"index": "date"}) # renomear a coluna do índice para "date" e resetar o índice para um índice numérico
+        df = pd.DataFrame.from_dict(time_series, orient='index') # index is the date and values are the columns
+        df = df.reset_index().rename(columns={"index": "date"}) # rename the index column to "date" and reset to a numeric index
 
         df.columns = [
             "date", "open", "high", "low", "close", 
             "adjusted_close", "volume", "dividend_amount", 
         ]
         
-        df["date"] = pd.to_datetime(df["date"]) # Converte a coluna de data para o formato datetime (estava como string) 2026-01-30 00:00:00
-        df = df.sort_values("date", ascending=False) # Ordena os dados por data em ordem crescente (do mais antigo para o mais recente)
+        df["date"] = pd.to_datetime(df["date"]) # Convert the date column to datetime format (was string) e.g. 2026-01-30 00:00:00
+        df = df.sort_values("date", ascending=False) # Sort data by date in descending order (most recent first)
 
         return df
     

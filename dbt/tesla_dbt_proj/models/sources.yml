@@ -1,0 +1,46 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: "Raw ingested data from external sources (bronze schema)"
+    schema: bronze
+    tables:
+      - name: bronze_news
+        description: "Raw Tesla news scraped from euronews and notateslaapp"
+        columns:
+          - name: id
+            description: "Auto-incremented primary key"
+          - name: date_raw
+            description: "Publication date as raw text"
+          - name: title
+            description: "News article title"
+          - name: link
+            description: "URL to the original article"
+          - name: source
+            description: "News source (e.g. euronews, notateslaapp)"
+          - name: file_name
+            description: "Name of the CSV file this row was loaded from"
+          - name: ingested_at
+            description: "Timestamp when the row was ingested"
+
+      - name: bronze_stock_data
+        description: "Raw Tesla monthly stock data from Alpha Vantage API"
+        columns:
+          - name: date
+            description: "Trading date as text (YYYY-MM-DD)"
+          - name: open
+            description: "Opening price as text"
+          - name: high
+            description: "Highest price as text"
+          - name: low
+            description: "Lowest price as text"
+          - name: close
+            description: "Closing price as text"
+          - name: adjusted_close
+            description: "Adjusted closing price as text"
+          - name: volume
+            description: "Trading volume as text"
+          - name: dividend_amount
+            description: "Dividend amount as text"
+          - name: ingested_at
+            description: "Timestamp when the row was ingested"

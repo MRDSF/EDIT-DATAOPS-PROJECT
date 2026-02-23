@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: gold_news_info
+    description: "Curated news articles with published date, title, link, and source"
+    columns:
+      - name: published_date
+        description: "Publication date of the article"
+        tests:
+          - not_null
+      - name: title
+        description: "News article title"
+        tests:
+          - not_null
+      - name: link
+        description: "URL to the original article"
+        tests:
+          - not_null
+          - unique
+      - name: source
+        description: "News source (e.g. euronews, notateslaapp)"
+        tests:
+          - not_null

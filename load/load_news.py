@@ -19,15 +19,18 @@ DB_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 # --------------------
 # Files folder
 # --------------------
-DATA_DIR = "./data/tesla_news"
-TABLE_NAME = "bronze_news"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(SCRIPT_DIR, "..", "data", "tesla_news")
+SCHEMA_NAME = "bronze"
+TABLE_NAME = "bronze.bronze_news"
 
 REQUIRED_COLUMNS = ["date", "title", "link", "source"]
-CHUNK_SIZE = 50_000  # ajusta: 10_000 / 50_000 / 100_000 dependendo do tamanho dos arquivos e da memória disponível
+CHUNK_SIZE = 50_000  # adjust: 10_000 / 50_000 / 100_000 depending on file size and available memory
 
 
 def ensure_table(conn):
     with conn.cursor() as cur:
+        cur.execute(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}")
         
         cur.execute(f"""
             CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
@@ -41,9 +44,9 @@ def ensure_table(conn):
             );
         """)
 
-        cur.execute("""
+        cur.execute(f"""
             CREATE UNIQUE INDEX IF NOT EXISTS bronze_news_dedupe
-            ON bronze_news (source, title, date_raw);
+            ON {TABLE_NAME} (source, title, date_raw);
         """)
 
     conn.commit()
@@ -61,7 +64,7 @@ def upload_all_csvs_to_raw(data_dir, conn):
         file_name = os.path.basename(csv_file)
 
         try:
-            # iterator de chunks
+            # chunk iterator
             df_iter = pd.read_csv(csv_file, dtype=str, chunksize=CHUNK_SIZE) # Controls the number of rows read into memory at once (adjust as needed) (iterator that reads the CSV file in chunks, treating all columns as strings)
             
             file_total = 0
@@ -74,7 +77,7 @@ def upload_all_csvs_to_raw(data_dir, conn):
                 df = df.rename(columns={"date": "date_raw"})
                 df["file_name"] = file_name
 
-                # limpeza simples
+                # basic cleanup
                 df = df.astype("string").apply(lambda s: s.str.strip())
                 df = df.dropna(how="all", subset=["date_raw", "title", "link", "source"])
 
