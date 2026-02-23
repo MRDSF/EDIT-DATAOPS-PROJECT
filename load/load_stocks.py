@@ -8,12 +8,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-TABLE_NAME = "bronze_stock_data"
-JSON_FILE = f"./data/stocks/stocks_data_tesla.json"
+SCHEMA_NAME = "bronze"
+TABLE_NAME = "bronze.bronze_stock_data"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+JSON_FILE = os.path.join(SCRIPT_DIR, "..", "data", "stocks", "stocks_data_tesla.json")
 
 
 def create_table(conn):
     with conn.cursor() as cur:
+        cur.execute(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}")
         cur.execute(f"""
             CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
                 date TEXT PRIMARY KEY,
@@ -33,7 +36,10 @@ def create_table(conn):
 def load_json_to_db(conn, json_path, chunk_size=100):
     total_rows = 0
 
-    for chunk in pd.read_json(json_path, chunksize=chunk_size): # read the JSON file in chunks of 100 rows (adjust as needed based on the size of your data and memory constraints)
+    df = pd.read_json(json_path) # loads the entire JSON file into a pandas DataFrame 
+
+    for start in range(0, len(df), chunk_size): # iterate over the DataFrame in chunks
+        chunk = df.iloc[start:start + chunk_size].copy() 
         # ingestion timestamp
         chunk["ingested_at"] = pd.Timestamp.now('UTC')
 

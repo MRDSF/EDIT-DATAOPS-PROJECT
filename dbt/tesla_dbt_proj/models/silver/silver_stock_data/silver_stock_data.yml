@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: silver_stock_data
+    description: "Cleaned and typed Tesla monthly stock data from bronze_stock_data"
+    columns:
+      - name: trade_date
+        description: "Trading date cast to date type"
+        tests:
+          - unique
+          - not_null
+      - name: open_price
+        description: "Opening price (numeric)"
+      - name: high_price
+        description: "Highest price (numeric)"
+      - name: low_price
+        description: "Lowest price (numeric)"
+      - name: close_price
+        description: "Closing price (numeric)"
+      - name: adjusted_close_price
+        description: "Adjusted closing price (numeric)"
+      - name: volume
+        description: "Trading volume (bigint)"
+      - name: dividend_amount
+        description: "Dividend amount (numeric)"
+      - name: ingested_at
+        description: "Timestamp when the row was ingested"

@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: silver_news
+    description: "Cleaned and typed Tesla news data from bronze_news"
+    columns:
+      - name: id
+        description: "Original primary key from bronze"
+      - name: date_raw
+        description: "Original date string, trimmed"
+      - name: published_date
+        description: "Publication date cast to date type"
+        tests:
+          - not_null
+      - name: title
+        description: "News article title, trimmed"
+        tests:
+          - not_null
+      - name: link
+        description: "URL to the original article, trimmed"
+        tests:
+          - not_null
+      - name: source
+        description: "News source (e.g. euronews, notateslaapp)"
+        tests:
+          - not_null
+      - name: file_name
+        description: "CSV file this row was loaded from"
+      - name: ingested_at
+        description: "Timestamp when the row was ingested"

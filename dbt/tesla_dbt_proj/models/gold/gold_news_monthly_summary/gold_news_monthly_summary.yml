@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: gold_news_monthly_summary
+    description: "Monthly article count per news source"
+    columns:
+      - name: source
+        description: "News source name"
+        tests:
+          - not_null
+      - name: month
+        description: "First day of the month"
+        tests:
+          - not_null
+      - name: total_articles
+        description: "Number of articles published that month"
