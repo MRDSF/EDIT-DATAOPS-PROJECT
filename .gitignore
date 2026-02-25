@@ -3,6 +3,7 @@ venv
 .env
 __pycache__/
 postgres_data/
+extras/alternativas_load/
 
 sentiment*
 logs
