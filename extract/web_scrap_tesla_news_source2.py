@@ -1,8 +1,10 @@
 import time
+import os
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 import csv
 from pathlib import Path
 
@@ -16,13 +18,23 @@ def scraper():
     opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--disable-gpu")
     opts.add_argument("--window-size=1920,1080")
-    driver = webdriver.Chrome(options=opts)
+
+    chrome_binary = os.getenv("CHROME_BINARY", "/usr/bin/chromium")
+    chromedriver_path = os.getenv("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
+
+    if Path(chrome_binary).exists():
+        opts.binary_location = chrome_binary
+
+    if Path(chromedriver_path).exists():
+        driver = webdriver.Chrome(service=Service(chromedriver_path), options=opts)
+    else:
+        driver = webdriver.Chrome(options=opts)
 
     rows = []
     seen = set()
 
     i = 1
-    while i < 30:
+    while i < 10:
         if i == 1:
             driver.get(URL)
         else:

@@ -37,6 +37,8 @@ services:
     image: ghcr.io/dbt-labs/dbt-postgres:1.8.latest
     container_name: dbt_to_postgres_dataops
     working_dir: /usr/app
+    entrypoint: []
+    command: ["sleep", "infinity"]
     environment:
       DBT_PROFILES_DIR: /root/.dbt
       TZ: ${TZ:-UTC}
