@@ -10,7 +10,6 @@ from pathlib import Path
 
 URL = "https://euronews.com/search?query=tesla"
 
-
 def scraper():
     opts = Options()
     opts.add_argument("--headless=new")
@@ -33,51 +32,52 @@ def scraper():
     rows = []
     seen = set()
 
-    i = 1
-    while i < 10:
-        if i == 1:
-            driver.get(URL)
-        else:
-            driver.get(f"{URL}&p={i}") 
+    try:
+        i = 1
+        while i < 5:
+            if i == 1:
+                driver.get(URL)
+            else:
+                driver.get(f"{URL}&p={i}") 
 
-        time.sleep(10)  # wait for the page to fully load
-        articles = driver.find_elements(By.CSS_SELECTOR, "article")
-        for art in articles:
-            try:
-                
-                a = art.find_elements(By.CSS_SELECTOR, "a.the-media-object__link") # find_elements returns a list and doesn't raise an error if not found
-                title_class = art.find_elements(By.CSS_SELECTOR, "h2.the-media-object__title") 
-                date_class = art.find_elements(By.CSS_SELECTOR, "div.the-media-object__date[data-timestamp]") 
+            time.sleep(10)  # wait for the page to fully load
+            articles = driver.find_elements(By.CSS_SELECTOR, "article")
+            for art in articles:
+                try:
+                    
+                    a = art.find_elements(By.CSS_SELECTOR, "a.the-media-object__link") # find_elements returns a list and doesn't raise an error if not found
+                    title_class = art.find_elements(By.CSS_SELECTOR, "h2.the-media-object__title") 
+                    date_class = art.find_elements(By.CSS_SELECTOR, "div.the-media-object__date[data-timestamp]") 
 
-                if not a or not title_class or not date_class:
+                    if not a or not title_class or not date_class:
+                        continue
+                    
+                    href = a[0].get_attribute("href") # [0] because find_elements returns a list
+                    title = title_class[0].text.strip() # returns the h2 web element and we get its text
+                    ts = int(date_class[0].get_attribute("data-timestamp")) # returns the div web element and we get the data-timestamp attribute
+                    date = datetime.utcfromtimestamp(ts).isoformat()
+
+                    if not href or not title or not date:
+                        continue
+                    
+                    tl = title.lower()
+                    if ("tesla" not in tl) and ("elon" not in tl) and ("musk" not in tl):
+                        continue
+
+                    if href in seen: # evitar duplicados
+                        continue
+                    seen.add(href)
+
+                    rows.append((date, title, href))
+
+
+                except Exception as e:
+                    print("Error:", e)
                     continue
-                
-                href = a[0].get_attribute("href") # [0] because find_elements returns a list
-                title = title_class[0].text.strip() # returns the h2 web element and we get its text
-                ts = int(date_class[0].get_attribute("data-timestamp")) # returns the div web element and we get the data-timestamp attribute
-                date = datetime.utcfromtimestamp(ts).isoformat()
 
-                if not href or not title or not date:
-                    continue
-                
-                tl = title.lower()
-                if ("tesla" not in tl) and ("elon" not in tl) and ("musk" not in tl):
-                    continue
-
-                if href in seen: # evitar duplicados
-                    continue
-                seen.add(href)
-
-                rows.append((date, title, href))
-
-
-            except Exception as e:
-                print("Error:", e)
-                continue
-
-        i+=1
-        
-    driver.quit()
+            i+=1
+    finally:
+        driver.quit()
 
     for date, title, href in rows:
         print(date)
@@ -88,7 +88,8 @@ def scraper():
     return rows
 
 def save_to_csv(news):
-    base_path = Path("data/tesla_news")
+    project_root = Path(__file__).resolve().parents[1]
+    base_path = project_root / "data" / "tesla_news"
     base_path.mkdir(parents=True, exist_ok=True)
 
     open_files = {}   # (year, month) -> file handle

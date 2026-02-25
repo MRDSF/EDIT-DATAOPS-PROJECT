@@ -79,7 +79,8 @@ def run_scraper():
 #             writer.writerow([date, title, link, "notateslaapp"])
 
 def save_to_csv(news):
-    base_path = Path("data/tesla_news")
+    project_root = Path(__file__).resolve().parents[1]
+    base_path = project_root / "data" / "tesla_news"
     base_path.mkdir(parents=True, exist_ok=True)
 
     open_files = {}   # (year, month) -> file handle
