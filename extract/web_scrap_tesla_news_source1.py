@@ -72,6 +72,7 @@ def run_scraper():
 #         writer = csv.writer(f)
 
 #         # header
+    existing_links = {}  # (year, month) -> set of existing links
 #         writer.writerow(["date", "title", "link", "source"])
 
 #         # dados
@@ -79,12 +80,13 @@ def run_scraper():
 #             writer.writerow([date, title, link, "notateslaapp"])
 
 def save_to_csv(news):
-    project_root = Path(__file__).resolve().parents[1]
+    project_root = Path(__file__).resolve().parents[1] # get the project root directory (two levels up from the current file) [1] because we want the parent of the parent (the project root), not just the parent (the extract directory)
     base_path = project_root / "data" / "tesla_news"
     base_path.mkdir(parents=True, exist_ok=True)
 
     open_files = {}   # (year, month) -> file handle
     writers = {}      # (year, month) -> csv.writer
+    existing_links = {}  # (year, month) -> set of existing links
 
     try:
         for title, link, date in news:
@@ -95,6 +97,16 @@ def save_to_csv(news):
                 path = base_path / filename # full file path
                 is_new = not path.exists()
 
+                links_for_month = set()
+                if path.exists():
+                    with open(path, "r", newline="", encoding="utf-8") as existing_file:
+                        reader = csv.DictReader(existing_file)
+                        for row in reader:
+                            existing_link = row.get("link")
+                            if existing_link:
+                                links_for_month.add(existing_link)
+                existing_links[key] = links_for_month
+
                 f = open(path, "a", newline="", encoding="utf-8")
                 w = csv.writer(f) # create the writer for this file
                 if is_new:
@@ -103,7 +115,11 @@ def save_to_csv(news):
                 open_files[key] = f # store the file handle to close later
                 writers[key] = w # store the writer to write data
 
+            if link in existing_links[key]:
+                continue
+
             writers[key].writerow([date, title, link, "notateslaapp"])  # write the data row using the writer for the article's year and month
+            existing_links[key].add(link)
     finally:
         # ensure all files are closed even if an error occurs
         for f in open_files.values():
