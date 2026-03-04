@@ -1,150 +1,199 @@
-# Tesla DataOps Project
+<div align="center">
 
-End-to-end data pipeline for Tesla stock prices and news articles — from raw extraction to analytical tables, orchestrated with Airflow.
+# 🚗 Tesla DataOps Pipeline
 
-## Architecture
+**End-to-end ELT pipeline for Tesla stock prices and news articles — from web scraping & API extraction to analytical tables, fully orchestrated with Apache Airflow.**
+
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Airflow](https://img.shields.io/badge/Airflow-2.9.3-017CEE?logo=apacheairflow&logoColor=white)](https://airflow.apache.org/)
+[![dbt](https://img.shields.io/badge/dbt-1.8-FF694B?logo=dbt&logoColor=white)](https://www.getdbt.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/compose/)
+[![Pydantic](https://img.shields.io/badge/Pydantic-2.x-E92063?logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
+
+</div>
+
+---
+
+## 📋 Table of Contents
+
+- [Overview](#-overview)
+- [Architecture](#-architecture)
+- [Tech Stack](#-tech-stack)
+- [Data Sources](#-data-sources)
+- [Medallion Architecture (Bronze → Silver → Gold)](#-medallion-architecture-bronze--silver--gold)
+- [Airflow DAGs](#-airflow-dags)
+- [Data Quality & Testing](#-data-quality--testing)
+- [Infrastructure](#-infrastructure)
+- [Project Structure](#-project-structure)
+- [Getting Started](#-getting-started)
+- [Documentation](#-documentation)
+
+---
+
+## 🎯 Overview
+
+This project implements a **production-grade DataOps pipeline** that collects, processes, and transforms Tesla-related data from multiple sources into analytical tables ready for dashboarding and analysis.
+
+**Key highlights:**
+
+- **Automated data extraction** from 3 sources (REST API + 2 web scrapers)
+- **Medallion architecture** (Bronze → Silver → Gold) with dbt transformations
+- **Full orchestration** via Apache Airflow with parallel task execution
+- **Data validation** at multiple layers — Pydantic schemas, dbt tests, and pytest
+- **Containerized infrastructure** — one `docker-compose up` to run everything
+- **Idempotent loads** — conflict-handling strategies ensure safe re-runs
+
+---
+
+## 🏗 Architecture
 
 ```
-Extract (API + Web Scraping)
-    │
-    ▼
-data/ (JSON + CSVs on disk)
-    │
-    ▼
-Load (Python → PostgreSQL bronze schema)
-    │
-    ▼
-Bronze (raw tables: bronze_news, bronze_stock_data)
-    │  dbt
-    ▼
-Silver (views: typed, cleaned, deduplicated)
-    │  dbt
-    ▼
-Gold (tables: aggregated metrics, curated data)
+┌──────────────────────────────────────────────────────────┐
+│                    DATA SOURCES                          │
+│                                                          │
+│  Alpha Vantage API    notateslaapp.com    euronews.com   │
+│   (REST + Pydantic)   (BeautifulSoup)      (Selenium)   │
+└──────────┬──────────────────┬──────────────────┬─────────┘
+           │                  │                  │
+           ▼                  ▼                  ▼
+┌──────────────────────────────────────────────────────────┐
+│                  LOCAL FILE STORAGE                       │
+│         data/stocks/*.json    data/tesla_news/*.csv       │
+└──────────────────────────┬───────────────────────────────┘
+                           │  Python (psycopg2 + pandas)
+                           ▼
+┌──────────────────────────────────────────────────────────┐
+│                     POSTGRESQL 15                         │
+│                                                          │
+│  ┌─────────┐      ┌──────────┐      ┌─────────────────┐ │
+│  │ BRONZE  │ dbt  │  SILVER  │ dbt  │      GOLD       │ │
+│  │ (raw)   │ ───► │ (views)  │ ───► │    (tables)     │ │
+│  │         │      │ cleaned  │      │   aggregated    │ │
+│  │         │      │ typed    │      │   metrics       │ │
+│  │         │      │ deduped  │      │                 │ │
+│  └─────────┘      └──────────┘      └─────────────────┘ │
+└──────────────────────────────────────────────────────────┘
+                           │
+          Orchestrated by Apache Airflow
 ```
 
-## Tech Stack
+---
 
-| Component | Technology |
-|---|---|
-| Database | PostgreSQL 15 |
-| DB Admin | pgAdmin 4 |
-| Transformation | dbt-postgres 1.8 |
-| Orchestration | Apache Airflow 2.9.3 |
-| Language | Python 3.11 |
-| Validation | Pydantic 2.x |
-| Testing | pytest + dbt tests |
-| Containers | Docker Compose |
+## 🛠 Tech Stack
 
-## Data Sources
+| Layer | Technology | Purpose |
+|:---|:---|:---|
+| **Extraction** | Python 3.11, Requests, BeautifulSoup, Selenium | API calls and web scraping |
+| **Validation** | Pydantic 2.x | Schema enforcement on API responses |
+| **Storage** | PostgreSQL 15 | Data warehouse (Bronze/Silver/Gold schemas) |
+| **Transformation** | dbt-postgres 1.8 | SQL-based transformations with Medallion Architecture |
+| **Orchestration** | Apache Airflow 2.9.3 | DAG scheduling and pipeline management |
+| **Infrastructure** | Docker Compose (6 services) | Reproducible, containerized environment |
+| **Testing** | pytest + dbt tests | Unit tests and data quality checks |
+| **DB Admin** | pgAdmin 4 | Database management UI |
+
+---
+
+## 📊 Data Sources
 
 | Source | Method | Schedule | Output |
-|---|---|---|---|
+|:---|:---|:---|:---|
 | [Alpha Vantage API](https://www.alphavantage.co/) | REST API + Pydantic validation | Monthly | `data/stocks/stocks_data_tesla.json` |
-| [notateslaapp.com](https://www.notateslaapp.com) | Web scraping (requests + BeautifulSoup) | Daily | `data/tesla_news/notateslaapp_YYYY_MM.csv` |
-| [euronews.com](https://euronews.com) | Web scraping (Selenium, headless Chrome) | Daily | `data/tesla_news/euronews_YYYY_MM.csv` |
+| [notateslaapp.com](https://www.notateslaapp.com) | Web scraping (Requests + BeautifulSoup) | Monthly | `data/tesla_news/notateslaapp_YYYY_MM.csv` |
+| [euronews.com](https://euronews.com) | Web scraping (Selenium headless Chrome) | Monthly | `data/tesla_news/euronews_YYYY_MM.csv` |
 
-## Docker Compose Services
+### Extraction Details
 
-```bash
-docker-compose up -d
-```
+- **Stock data**: Monthly adjusted time series from Alpha Vantage, validated with a Pydantic `ApiResponse` model before persistence
+- **News (source 1)**: Pagination-based scraping with deduplication via `seen_links` set; CSVs are partitioned by `(year, month)` and appended incrementally
+- **News (source 2)**: Headless Selenium automation with CSS selectors; filters articles containing "Tesla", "Elon", or "Musk"
 
-| Service | Container | Port | Description |
-|---|---|---|---|
-| `database` | `postgres_database_dataops` | 5432 | PostgreSQL 15 with healthcheck |
-| `pgadmin` | `pgadmin_service_dataops` | 5051 | pgAdmin web UI |
-| `dbt` | `dbt_to_postgres_dataops` | — | dbt-postgres (run on demand) |
-| `airflow-init` | `airflow_init_dataops` | — | Runs `airflow db migrate`, then exits |
-| `airflow-webserver` | `airflow_webserver_dataops` | 8080 | Airflow web UI |
-| `airflow-scheduler` | `airflow_scheduler_dataops` | — | Triggers DAGs on schedule |
+---
 
-### Startup Order
+## 🥇 Medallion Architecture (Bronze → Silver → Gold)
 
-```
-database (healthcheck: pg_isready)
-    ├── pgadmin
-    ├── dbt
-    └── airflow-init (db migrate)
-            ├── airflow-webserver
-            └── airflow-scheduler
-```
+### Bronze — Raw Ingestion
 
-### Access
-
-| Service | URL | Credentials |
-|---|---|---|
-| pgAdmin | http://localhost:5051 | See `.env` |
-| Airflow | http://localhost:8080 | admin / admin |
-
-## Database Schemas
-
-| Schema | Layer | Contents |
-|---|---|---|
-| `bronze` | Raw | `bronze_news`, `bronze_stock_data` — raw data as-is from sources |
-| `silver` | Cleaned | `silver_news`, `silver_stock_data` — typed, trimmed, deduplicated (views) |
-| `gold` | Analytical | `gold_news_info`, `gold_news_monthly_summary`, `gold_stock_monthly_summary` (tables) |
-
-### Bronze Tables
+Raw data loaded as-is from files into PostgreSQL tables using `psycopg2` with `execute_values` for bulk inserts.
 
 | Table | PK / Unique Constraint | Load Strategy |
-|---|---|---|
-| `bronze_news` | `bigserial` PK + unique on `(source, title, date_raw)` | `ON CONFLICT DO NOTHING` (immutable data) |
-| `bronze_stock_data` | `date TEXT` PK | `ON CONFLICT DO UPDATE` (mutable data — corrections) |
+|:---|:---|:---|
+| `bronze_news` | `bigserial` PK + unique on `(source, title, date_raw)` | `ON CONFLICT DO NOTHING` — immutable data |
+| `bronze_stock_data` | `date TEXT` PK | `ON CONFLICT DO UPDATE` — mutable data |
 
-### Silver Models (views, deduplicated)
+### Silver — Cleaned & Deduplicated (dbt views)
 
-| Model | Source | Deduplication Key | Keeps |
-|---|---|---|---|
-| `silver_news` | `bronze_news` | `(source, title, date_raw)` | Latest `ingested_at` |
-| `silver_stock_data` | `bronze_stock_data` | `trade_date` | Latest `ingested_at` |
+SQL views that cast types, trim whitespace, and deduplicate using `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ingested_at DESC) = 1`.
 
-Deduplication uses `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ingested_at DESC) = 1`.
+| Model | Source | Deduplication Key |
+|:---|:---|:---|
+| `silver_news` | `bronze_news` | `(source, title, date_raw)` |
+| `silver_stock_data` | `bronze_stock_data` | `trade_date` |
 
-### Gold Models (tables, aggregated)
+### Gold — Analytical Tables (dbt tables)
+
+Aggregated, business-ready metrics materialized as tables.
 
 | Model | Description | Key Metrics |
-|---|---|---|
+|:---|:---|:---|
 | `gold_news_info` | Curated news articles | `published_date`, `title`, `link`, `source` |
 | `gold_news_monthly_summary` | Monthly news aggregation per source | `total_articles`, `distinct_days_with_articles`, `avg_articles_per_day` |
 | `gold_stock_monthly_summary` | Monthly stock aggregation | `month_low`, `month_high`, `avg_close_price`, `total_volume`, `total_dividends`, `trading_days` |
 
-## Airflow DAGs
+---
 
-### `news_pipeline` — Daily at 07:00 UTC
+## ⚙ Airflow DAGs
+
+### `news_pipeline` — Monthly
 
 ```
-[scrape_notateslaapp, scrape_euronews]  (parallel)
-        ↓
-    load_news_data
-        ↓
-  dbt_run_silver_news
-        ↓
-  dbt_run_gold_news  (gold_news_monthly_summary + gold_news_info)
-        ↓
-    dbt_test_news
+[scrape_notateslaapp, scrape_euronews]   ← parallel extraction
+                  │
+                  ▼
+          load_news_data                 ← CSVs → PostgreSQL bronze
+                  │
+                  ▼
+        dbt_run_silver_news              ← clean + deduplicate
+                  │
+                  ▼
+         dbt_run_gold_news               ← aggregate
+                  │
+                  ▼
+          dbt_test_news                  ← data quality checks
 ```
 
 ### `stock_pipeline` — Monthly (1st at 06:00 UTC)
 
 ```
-extract_stock_data  (Alpha Vantage API)
-        ↓
-    load_stock_data
-        ↓
-  dbt_run_silver_stock
-        ↓
-  dbt_run_gold_stock
-        ↓
-    dbt_test_stock
+        extract_stock_data               ← Alpha Vantage API
+                  │
+                  ▼
+         load_stock_data                 ← JSON → PostgreSQL bronze
+                  │
+                  ▼
+      dbt_run_silver_stock               ← cast types + deduplicate
+                  │
+                  ▼
+       dbt_run_gold_stock                ← monthly aggregation
+                  │
+                  ▼
+         dbt_test_stock                  ← data quality checks
 ```
 
-## Data Quality
+**Design decisions:**
+- `BashOperator` chosen over `PythonOperator` for script isolation and Docker-in-Docker dbt execution
+- Parallel scraping tasks reduce pipeline wall time
+- Each DAG includes a final `dbt test` step as a quality gate
+
+---
+
+## ✅ Data Quality & Testing
 
 ### dbt Schema Tests
 
-| Model | Tests |
-|---|---|
+| Model | Column Tests |
+|:---|:---|
 | `silver_stock_data` | `trade_date` — unique, not_null |
 | `silver_news` | `published_date`, `title`, `link`, `source` — not_null |
 | `gold_news_info` | `link` — unique, not_null; all columns — not_null |
@@ -153,97 +202,163 @@ extract_stock_data  (Alpha Vantage API)
 
 ### dbt Singular Tests
 
-| Test | Asserts |
-|---|---|
-| `assert_stock_values_not_negative` | All prices, volume, and dividends in `silver_stock_data` are >= 0 |
-| `assert_gold_stock_values_not_negative` | All aggregated values in `gold_stock_monthly_summary` are >= 0 |
+| Test | Validates |
+|:---|:---|
+| `assert_stock_values_not_negative` | All prices, volume, and dividends in Silver ≥ 0 |
+| `assert_gold_stock_values_not_negative` | All aggregated values in Gold ≥ 0 |
 
-## Project Structure
+### Python Unit Tests (pytest)
+
+| Test File | Coverage |
+|:---|:---|
+| `test_schemas.py` | Pydantic model validation — valid parsing, missing field rejection |
+| `test_load_news.py` | CSV column validation — required columns detection |
+
+```bash
+python -m pytest tests/ -v
+```
+
+---
+
+## 🐳 Infrastructure
+
+Six Docker Compose services with health checks and proper dependency ordering:
+
+```
+database (PostgreSQL 15 — healthcheck: pg_isready)
+    ├── pgadmin (web UI :5051)
+    ├── dbt (run on demand)
+    └── airflow-init (db migrate → exit)
+            ├── airflow-webserver (:8080)
+            └── airflow-scheduler
+```
+
+| Service | Container | Port | Description |
+|:---|:---|:---|:---|
+| `database` | `postgres_database_dataops` | 5432 | PostgreSQL 15 with healthcheck |
+| `pgadmin` | `pgadmin_service_dataops` | 5051 | Database admin web UI |
+| `dbt` | `dbt_to_postgres_dataops` | — | dbt-postgres 1.8 (run on demand) |
+| `airflow-init` | `airflow_init_dataops` | — | Database migration on startup |
+| `airflow-webserver` | `airflow_webserver_dataops` | 8080 | Airflow web UI |
+| `airflow-scheduler` | `airflow_scheduler_dataops` | — | DAG scheduling |
+
+---
+
+## 📁 Project Structure
 
 ```
 projeto-dataops/
-├── docker-compose.yml
-├── .env                          # Credentials (not committed)
-├── requirements.txt              # Python deps (local dev)
 │
-├── extract/                      # Data extraction
-│   ├── collect_api_data.py           # Alpha Vantage stock API
-│   ├── web_scrap_tesla_news_source1.py   # notateslaapp (requests)
-│   └── web_scrap_tesla_news_source2.py   # euronews (Selenium headless)
+├── docker-compose.yml                # 6 services: Postgres, pgAdmin, dbt, Airflow
+├── .env                              # Credentials (not committed)
+├── requirements.txt                  # Python dependencies
 │
-├── load/                         # Bronze layer loaders
-│   ├── load_news.py                  # CSVs → bronze.bronze_news
-│   ├── load_stocks.py                # JSON → bronze.bronze_stock_data
-│   └── README.md
+├── extract/                          # 🔍 Data extraction layer
+│   ├── collect_api_data.py           #    Alpha Vantage REST API + Pydantic
+│   ├── web_scrap_tesla_news_source1.py   #    notateslaapp (Requests + BS4)
+│   └── web_scrap_tesla_news_source2.py   #    euronews (Selenium headless)
 │
-├── models/                       # Pydantic schemas
-│   └── schemas.py                    # API response validation
+├── models/                           # 📐 Pydantic schemas
+│   └── schemas.py                    #    MonthlyBar + ApiResponse models
 │
-├── data/                         # Raw data files
-│   ├── stocks/                       # Stock JSON
-│   └── tesla_news/                   # News CSVs (monthly partitioned)
+├── load/                             # 📥 Bronze layer loaders
+│   ├── load_news.py                  #    CSVs → bronze.bronze_news (chunked)
+│   └── load_stocks.py                #    JSON → bronze.bronze_stock_data
 │
-├── dbt/                          # dbt project
-│   ├── profiles/
-│   │   └── profiles.yml
-│   ├── tesla_dbt_proj/
-│   │   ├── models/
-│   │   │   ├── sources.yml
-│   │   │   ├── silver/               # Typed/cleaned/deduped views
-│   │   │   └── gold/                 # Aggregated tables
-│   │   ├── tests/                    # Singular tests (not_negative)
-│   │   └── macros/                   # generate_schema_name override
-│   └── README.md
+├── data/                             # 💾 Raw data files
+│   ├── stocks/                       #    Stock JSON (monthly adjusted)
+│   └── tesla_news/                   #    News CSVs (partitioned by month)
 │
-├── airflow/                      # Airflow setup
-│   ├── Dockerfile                    # Custom image with Python deps
-│   ├── requirements.txt
-│   ├── dags/                         # DAG definitions
-│   │   ├── dag_news_pipeline.py
-│   │   ├── dag_stock_pipeline.py
-│   │   └── README.md
-│   └── README.md
+├── dbt/                              # 🔄 dbt transformation project
+│   ├── profiles/profiles.yml         #    Connection config (env_var based)
+│   └── tesla_dbt_proj/
+│       ├── models/
+│       │   ├── sources.yml           #    Bronze source definitions
+│       │   ├── silver/               #    Cleaned/typed/deduped views
+│       │   └── gold/                 #    Aggregated analytical tables
+│       ├── tests/                    #    Singular tests (not_negative)
+│       └── macros/                   #    generate_schema_name override
 │
-├── tests/                        # Python unit tests (pytest)
-│   ├── test_schemas.py               # Pydantic model tests
-│   ├── test_load_news.py             # CSV validation tests
-│   └── README.md
+├── airflow/                          # 🔁 Orchestration
+│   ├── Dockerfile                    #    Custom image (Chromium + Python deps)
+│   └── dags/
+│       ├── dag_news_pipeline.py      #    Scrape → Load → Transform (news)
+│       └── dag_stock_pipeline.py     #    Extract → Load → Transform (stocks)
 │
-└── sentiment_analysis_test/      # Kafka sentiment (experimental)
+└── tests/                            # 🧪 Python unit tests
+    ├── test_schemas.py               #    Pydantic model tests
+    └── test_load_news.py             #    CSV validation tests
 ```
 
-## Quick Start
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- [Docker](https://www.docker.com/) & Docker Compose
+- [Alpha Vantage API key](https://www.alphavantage.co/support/#api-key) (free)
+
+### 1. Clone & Configure
 
 ```bash
-# 1. Clone and configure
-cp .env-example .env  # edit with your credentials
+git clone https://github.com/<your-username>/projeto-dataops.git
+cd projeto-dataops
+cp .env-example .env   # fill in your credentials
+```
 
-# 2. Start infrastructure
+### 2. Start Infrastructure
+
+```bash
 docker-compose up -d
+```
 
-# 3. Create Airflow admin user (first time only)
+### 3. Create Airflow Admin User (first time only)
+
+```bash
 docker exec airflow_webserver_dataops airflow users create \
   --username admin --password admin \
   --firstname Admin --lastname User \
   --role Admin --email admin@example.com
+```
 
-# 4. Open Airflow UI → enable DAGs
-#    http://localhost:8080
+### 4. Access the Services
 
-# 5. Run dbt models manually (optional)
-docker-compose run --rm dbt run
+| Service | URL |
+|:---|:---|
+| **Airflow** | [http://localhost:8080](http://localhost:8080) |
+| **pgAdmin** | [http://localhost:5051](http://localhost:5051) |
 
-# 6. Run Python tests locally
+### 5. Trigger Pipelines
+
+Enable the DAGs in the Airflow UI, or trigger them manually:
+
+```bash
+# Run dbt transformations manually
+docker exec dbt_to_postgres_dataops sh -c "cd /usr/app && dbt run --profiles-dir /root/.dbt"
+
+# Run dbt tests
+docker exec dbt_to_postgres_dataops sh -c "cd /usr/app && dbt test --profiles-dir /root/.dbt"
+```
+
+### 6. Run Python Tests
+
+```bash
 pip install -r requirements.txt
 python -m pytest tests/ -v
 ```
 
-## Documentation
+---
 
-| Folder | README |
-|---|---|
+## 📚 Documentation
+
+Each module has its own detailed README:
+
+| Module | Documentation |
+|:---|:---|
 | [load/](load/README.md) | Load scripts — chunking, conflict strategies, path resolution |
 | [dbt/](dbt/README.md) | dbt commands, env_var flow, deduplication strategy |
-| [airflow/](airflow/README.md) | Airflow setup, custom Dockerfile |
-| [airflow/dags/](airflow/dags/README.md) | DAG docs, design decisions, BashOperator vs PythonOperator |
+| [airflow/](airflow/README.md) | Airflow setup, custom Dockerfile, Chromium install |
+| [airflow/dags/](airflow/dags/README.md) | DAG docs, design decisions, BashOperator rationale |
 | [tests/](tests/README.md) | Test descriptions and run commands |
+
