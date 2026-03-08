@@ -14,7 +14,6 @@ def get_page(page):
 
     r = requests.get(url, headers=headers, timeout=30)
     soup = BeautifulSoup(r.text, "html.parser")
-    #print(r.text)
 
     news = []
     
@@ -46,9 +45,7 @@ def get_page(page):
 
 def run_scraper():
     all_news = []
-    #pages = [1, 3, 5, 10,25,30,32,40,50,60,70,80,90,100]
     for page in range(1, 100):  # desired pages
-    #for page in pages:
         print(f"Página {page}")
         items = get_page(page)
 
@@ -64,20 +61,6 @@ def run_scraper():
         print("-" * 80)
     
     return all_news
-
-# def save_to_csv(news):
-#     path = Path("data/tesla_news/notateslaapp.csv")
-#     path.parent.mkdir(parents=True, exist_ok=True) # create directory if it doesn't exist
-#     with open(path, "w", newline="", encoding="utf-8") as f:
-#         writer = csv.writer(f)
-
-#         # header
-    existing_links = {}  # (year, month) -> set of existing links
-#         writer.writerow(["date", "title", "link", "source"])
-
-#         # dados
-#         for title, link, date in news:
-#             writer.writerow([date, title, link, "notateslaapp"])
 
 def save_to_csv(news):
     project_root = Path(__file__).resolve().parents[1] # get the project root directory (two levels up from the current file) [1] because we want the parent of the parent (the project root), not just the parent (the extract directory)

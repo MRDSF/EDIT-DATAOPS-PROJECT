@@ -11,7 +11,6 @@ load_dotenv()
 symbol = "TSLA"
 company = "tesla"
 
-
 def fetch_data():
     try:
         api_key = os.getenv("api_key")
@@ -30,7 +29,6 @@ def fetch_data():
 
         data = response.json()
 
-
         if "Monthly Adjusted Time Series" not in data:
             raise ValueError(f"Unexpected API response: {data}") # If the expected key is not present, raise a ValueError with the full API response to help with debugging
 
@@ -42,11 +40,8 @@ def fetch_data():
                 json.dump(data, f, indent=2)
 
             raise ValueError(f"Invalid API response: {e} \n Payload saved to debug_api_payload.json") from e
-        
-        #time_series = parsed.series  # <-- already validated with Pydantic, now just grab the data series
 
         time_series = data["Monthly Adjusted Time Series"]
-    
 
         df = pd.DataFrame.from_dict(time_series, orient='index') # index is the date and values are the columns
         df = df.reset_index().rename(columns={"index": "date"}) # rename the index column to "date" and reset to a numeric index

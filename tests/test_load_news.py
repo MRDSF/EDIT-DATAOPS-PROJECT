@@ -25,7 +25,6 @@ class TestNewsDataValidation:
             {
                 "date": ["2025-01-01"],
                 "title": ["Tesla news headline"],
-                # 'link' and 'source' are missing
             }
         )
         missing = [c for c in self.REQUIRED_COLUMNS if c not in df.columns]

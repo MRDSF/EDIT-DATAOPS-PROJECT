@@ -31,7 +31,6 @@ class TestMonthlyBar:
         raw = {
             "1. open": "250.00",
             "2. high": "260.50",
-            # missing remaining fields
         }
         with pytest.raises(Exception):
             MonthlyBar(**raw)
