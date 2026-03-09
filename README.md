@@ -46,7 +46,7 @@ This project implements a **production-grade DataOps pipeline** that collects, p
 **End Goal:** Transform raw data into actionable business intelligence.
 
 ### 1. Tesla Stock & Media Activity Overview
-![Tesla Stock & Media Activity Overview](./dashboards/dashboard_1.png)
+![Tesla Stock & Media Activity Overview](./dashboards/dashboard_2.png)
 
 ### 2. News Coverage & Market Behavior
 ![News Coverage & Market Behavior](./dashboards/dashboard_1.png)
